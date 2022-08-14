@@ -1,6 +1,7 @@
 #ifndef SPONGE_LIBSPONGE_BYTE_STREAM_HH
 #define SPONGE_LIBSPONGE_BYTE_STREAM_HH
 
+#include <cstddef>
 #include <string>
 
 //! \brief An in-order byte stream.
@@ -11,7 +12,14 @@
 class ByteStream {
   private:
     // Your code here -- add private members as necessary.
-
+    size_t _capacity;
+    size_t _write_pos;
+    size_t _read_pos;
+    size_t _max_size;
+    size_t _total_bytes_written;
+    size_t _total_bytes_read;
+    bool _input_eof;
+    char *_buffer;
     // Hint: This doesn't need to be a sophisticated data structure at
     // all, but if any of your tests are taking longer than a second,
     // that's a sign that you probably want to keep exploring
@@ -22,7 +30,12 @@ class ByteStream {
   public:
     //! Construct a stream with room for `capacity` bytes.
     ByteStream(const size_t capacity);
+    ByteStream(const ByteStream&)=delete;
+    ByteStream &operator=(const ByteStream&)=delete;
 
+    ~ByteStream() {
+      free(_buffer);
+    }
     //! \name "Input" interface for the writer
     //!@{
 
@@ -40,6 +53,8 @@ class ByteStream {
     //! Indicate that the stream suffered an error.
     void set_error() { _error = true; }
     //!@}
+
+
 
     //! \name "Output" interface for the reader
     //!@{
