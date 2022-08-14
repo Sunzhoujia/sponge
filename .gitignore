@@ -1,3 +1,7 @@
 /build
 /.ccls-cache
 .cache
+<<<<<<< HEAD
+=======
+*.json
+>>>>>>> origin/lab1-startercode
