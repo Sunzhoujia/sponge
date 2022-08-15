@@ -11,6 +11,9 @@ using namespace std;
 int main() {
     try {
         {
+            // submitSegment: push_string
+            // ByteAssembled: check byte_writted
+            // BytesAvailable: check content（read）
             ReassemblerTestHarness test{2};
 
             test.execute(SubmitSegment{"ab", 0});
@@ -31,7 +34,7 @@ int main() {
 
             test.execute(SubmitSegment{"ab", 0});
             test.execute(BytesAssembled(2));
-
+            // 没有去读stream，所以这次的submit需要丢弃，byte_written依旧是2
             test.execute(SubmitSegment{"cd", 2});
             test.execute(BytesAssembled(2));
 
@@ -46,7 +49,7 @@ int main() {
 
         {
             ReassemblerTestHarness test{2};
-
+            // 验证index乱序
             test.execute(SubmitSegment{"bX", 1});
             test.execute(BytesAssembled(0));
 
