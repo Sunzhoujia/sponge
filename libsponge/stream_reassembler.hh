@@ -6,32 +6,24 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
-#include <deque>
+#include <map>
 //! \brief A class that assembles a series of excerpts from a byte stream (possibly out of order,
 //! possibly overlapping) into an in-order byte stream.
 class StreamReassembler {
-  public:
-    struct SubString {
-      size_t start;
-      size_t end;
-      std::string content;
-      // sort by ascending order
-      bool operator < (const SubString& rhs) {
-        if (this->start == rhs.start) {
-          return this->end < rhs.end;
-        }
-        return this->start < rhs.start;
-      }
-      SubString(size_t s, size_t e, std::string cont): start(s), end(e), content(cont){}
-    };
-
   private:
     // Your code here -- add private members as necessary.
     ByteStream _output;  //!< The reassembled in-order byte stream
     size_t _capacity;    //!< The maximum number of bytes
     size_t _next_index;   // the index of next byte to push into byte stream
-    size_t _eof_index;
-    std::deque<SubString> _unassembled_substr;
+    size_t _eof_index;    // 记录出现eof字符流的最后一个byte的index 
+    bool _eof_flag{false};
+    std::map<size_t, std::string> window; // 存储传进来的字符流, <index, substring>
+
+    void insert_substring(const std::string &data, const size_t index);
+    
+    /* 重排window中乱序的substring, 并尽可能的写入byte stream */
+    void write_substring();
+
 
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.
