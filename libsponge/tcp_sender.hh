@@ -6,10 +6,81 @@
 #include "tcp_segment.hh"
 #include "wrapping_integers.hh"
 
+#include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <queue>
-
+#include <map>
 //! \brief The "sender" part of a TCP implementation.
+
+class Timer {
+  private:
+    bool _start;
+
+    unsigned int _init_retx_timeout;
+
+    unsigned int _transmission_time;
+
+    // retx_timeout may double if network is busy.
+    unsigned int _cur_retx_timeout;
+
+  public:
+    unsigned int _num_of_retransmissions;
+
+    Timer(unsigned int retx_timeout):
+        _start(false),
+        _init_retx_timeout(retx_timeout),
+        _transmission_time(0),
+        _cur_retx_timeout(retx_timeout),
+        _num_of_retransmissions(0) {}
+
+    bool running() {return _start;}
+
+    void start() {
+      _start = true;
+      _cur_retx_timeout = _init_retx_timeout;
+      _transmission_time = 0;
+      _num_of_retransmissions = 0;
+      return;
+    }
+
+    void close() {
+      _start = false;
+      _num_of_retransmissions = 0;
+    }
+
+    bool timeout(const size_t ms_since_last_tick) {
+      if (!running()) {
+        return false;
+      }
+
+      if (ms_since_last_tick + _transmission_time >= _cur_retx_timeout) {
+        return true;
+      }
+
+      _transmission_time += ms_since_last_tick;
+      return false;
+    }
+
+    /* 
+      1. window == 0, keep RTO
+      2. window != 0, RTO *= 2
+     */
+    void restart_timer(const size_t window) {
+      if (!running()) {
+        return;
+      }
+
+      if (window != 0) {
+        _cur_retx_timeout *= 2;
+      }
+
+      _transmission_time = 0;
+      _num_of_retransmissions++;
+    }
+};
+
+
 
 //! Accepts a ByteStream, divides it up into segments and sends the
 //! segments, keeps track of which segments are still in-flight,
@@ -32,6 +103,16 @@ class TCPSender {
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_seqno{0};
 
+    
+    /* add private member */
+  uint64_t _ackno;
+  size_t _window_size;
+  uint64_t _bytes_in_flight;
+  Timer _timer;
+
+  std::queue<TCPSegment> _segments_unacked{};
+
+
   public:
     //! Initialize a TCPSender
     TCPSender(const size_t capacity = TCPConfig::DEFAULT_CAPACITY,
@@ -52,6 +133,10 @@ class TCPSender {
 
     //! \brief Generate an empty-payload segment (useful for creating empty ACK segments)
     void send_empty_segment();
+
+
+    void send_no_empty_segments(TCPSegment &seg);
+
 
     //! \brief create and send segments to fill as much of the window as possible
     void fill_window();
