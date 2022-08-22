@@ -105,13 +105,13 @@ class TCPSender {
 
     
     /* add private member */
-  uint64_t _ackno;
-  size_t _window_size;
-  uint64_t _bytes_in_flight;
-  Timer _timer;
+    uint64_t _ackno;
+    size_t _window_size;
+    uint64_t _bytes_in_flight;
+    Timer _timer;
 
-  std::queue<TCPSegment> _segments_unacked{};
-
+    std::queue<TCPSegment> _segments_unacked{};
+    bool _fin{false};
 
   public:
     //! Initialize a TCPSender
@@ -125,11 +125,15 @@ class TCPSender {
     const ByteStream &stream_in() const { return _stream; }
     //!@}
 
+    bool fin_sent(){
+      return _fin;
+    }
+
     //! \name Methods that can cause the TCPSender to send a segment
     //!@{
 
     //! \brief A new acknowledgment was received
-    void ack_received(const WrappingInt32 ackno, const uint16_t window_size);
+    bool ack_received(const WrappingInt32 ackno, const uint16_t window_size);
 
     //! \brief Generate an empty-payload segment (useful for creating empty ACK segments)
     void send_empty_segment();
@@ -142,7 +146,7 @@ class TCPSender {
     void fill_window();
 
     //! \brief Notifies the TCPSender of the passage of time
-    void tick(const size_t ms_since_last_tick);
+    bool tick(const size_t ms_since_last_tick);
     //!@}
 
     //! \name Accessors

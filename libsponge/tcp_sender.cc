@@ -56,6 +56,7 @@ void TCPSender::fill_window() {
       seg.payload() = Buffer(_stream.read(len));
       if (_stream.eof() && remain - seg.length_in_sequence_space() > 0) {
         seg.header().fin = true;
+        _fin = true;
       }
       if (seg.length_in_sequence_space() == 0) {
         return;
@@ -66,6 +67,7 @@ void TCPSender::fill_window() {
     else if (_stream.eof()) {
       if (_next_seqno < _stream.bytes_written() + 2) {
         seg.header().fin = true;
+        _fin = true;
         send_no_empty_segments(seg);
       }
       /* Status: FIN_SENT and FIN_ACKED both do nothing Just return  */
@@ -80,17 +82,17 @@ void TCPSender::fill_window() {
 
 //! \param ackno The remote receiver's ackno (acknowledgment number)
 //! \param window_size The remote receiver's advertised window size
-void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_size) {
+bool TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_size) {
   uint64_t abs_ackno = unwrap(ackno, _isn, _ackno);
 
   if (abs_ackno > _next_seqno)
-    return;
+    return false;
   
   _window_size = static_cast<size_t>(window_size);
 
   // ack大的先来了
   if (abs_ackno <= _ackno) {
-    return;
+    return false;
   }
 
   _ackno = abs_ackno;
@@ -114,21 +116,24 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
     _timer.close();
   }
 
+  return true;
+
 }
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
-void TCPSender::tick(const size_t ms_since_last_tick) {
+bool TCPSender::tick(const size_t ms_since_last_tick) {
   if (!_timer.running() || !_timer.timeout(ms_since_last_tick)) {
-    return;
+    return false;
   }
 
   if (_segments_unacked.empty()) {
     _timer.close();
-    return;
+    return false;
   }
 
   _timer.restart_timer(_window_size);
   _segments_out.push(_segments_unacked.front());
+  return true;
 }
 
 unsigned int TCPSender::consecutive_retransmissions() const { return _timer._num_of_retransmissions; }

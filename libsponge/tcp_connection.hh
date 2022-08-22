@@ -3,6 +3,7 @@
 
 #include "tcp_config.hh"
 #include "tcp_receiver.hh"
+#include "tcp_segment.hh"
 #include "tcp_sender.hh"
 #include "tcp_state.hh"
 
@@ -20,6 +21,18 @@ class TCPConnection {
     //! for 10 * _cfg.rt_timeout milliseconds after both streams have ended,
     //! in case the remote TCPConnection doesn't know we've received its whole stream?
     bool _linger_after_streams_finish{true};
+
+    bool _active{true};
+    bool _established{true};
+    bool _rst{false};
+    size_t _ms_since_last_segment_received{0};
+
+    // 将sender的_segments_out的segment丢入tcpconnection的queue
+    void send_segments();
+    void fill_queue(std::queue<TCPSegment>& stream_que);
+    void set_rst();
+    void test_end();
+
 
   public:
     //! \name "Input" interface for the writer
@@ -89,8 +102,8 @@ class TCPConnection {
     //!@{
     ~TCPConnection();  //!< destructor sends a RST if the connection is still open
     TCPConnection() = delete;
-    TCPConnection(TCPConnection &&other) = default;
-    TCPConnection &operator=(TCPConnection &&other) = default;
+    TCPConnection(TCPConnection &&other);
+    TCPConnection &operator=(TCPConnection &&other);
     TCPConnection(const TCPConnection &other) = delete;
     TCPConnection &operator=(const TCPConnection &other) = delete;
     //!@}
